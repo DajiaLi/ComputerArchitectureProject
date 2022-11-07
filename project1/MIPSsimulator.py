@@ -18,6 +18,7 @@ class MIPSsimulator:
         self.outputSimulation = None
         self.Registers = []
         self.Data = []
+        self.instructionBeginIndex = 64
         self.DataBeginIndex = None
 
 
@@ -28,7 +29,7 @@ class MIPSsimulator:
             os.remove(self.SimulationOutput)
         self.outputSimulation = open(self.SimulationOutput, "a")
 
-        for i in range(0, 33):
+        for i in range(0, 32):
             self.Registers.append(0)
 
     def print(self):
@@ -220,8 +221,12 @@ class MIPSsimulator:
 
     def writeSimulationOutput(self, cycle, address, instructionIndex):
         self.outputSimulation.write("-" * 20)
-        self.outputSimulation.write("\nCycle:%d\t%d\t%s\t%s\n\nRegisters\n"
-                                    % (cycle, address, self.instructions_print[instructionIndex][0], self.instructions_print[instructionIndex][1]))
+        if self.instructions_print[instructionIndex][0] == 'BREAK':
+            self.outputSimulation.write("\nCycle:%d\t%d\t%s\n\nRegisters\n"
+                                        % (cycle, address, self.instructions_print[instructionIndex][0]))
+        else:
+            self.outputSimulation.write("\nCycle:%d\t%d\t%s\t%s\n\nRegisters\n"
+                                        % (cycle, address, self.instructions_print[instructionIndex][0], self.instructions_print[instructionIndex][1]))
         self.outputSimulation.write("R00:")
         for i in range(0, 16):
             self.outputSimulation.write("\t%d" % (self.Registers[i]))
@@ -234,6 +239,7 @@ class MIPSsimulator:
                 self.outputSimulation.write("\n%d:" % (self.DataBeginIndex + 4 * i))
             self.outputSimulation.write("\t%d" % (self.Data[i]))
         self.outputSimulation.write("\n")
+        self.outputSimulation.write("\n")
 
     def simulation(self):
         """
@@ -242,15 +248,68 @@ class MIPSsimulator:
         ['BEQ', 1, 2, 68], ['SLL', 16, 1, 2], ['LW', 3, 148, 16]
         ['J', 72], ['BREAK']
         """
-        pass
+        pc = 0
+        cycle = 0
+        while True:
+            cycle += 1
+            if self.instructions[pc][0] == 'ADD':
+                if self.instructions[pc][1] == 'R':
+                    self.Registers[self.instructions[pc][2]] = self.Registers[self.instructions[pc][3]] + self.Registers[self.instructions[pc][4]]
+                elif self.instructions[pc][1] == 'I':
+                    self.Registers[self.instructions[pc][2]] = self.Registers[self.instructions[pc][3]] + self.instructions[pc][4]
+            elif self.instructions[pc][0] == 'SUB':
+                if self.instructions[pc][1] == 'R':
+                    self.Registers[self.instructions[pc][2]] = self.Registers[self.instructions[pc][3]] - self.Registers[self.instructions[pc][4]]
+                elif self.instructions[pc][1] == 'I':
+                    self.Registers[self.instructions[pc][2]] = self.Registers[self.instructions[pc][3]] - self.instructions[pc][4]
+            elif self.instructions[pc][0] == 'MUL':
+                if self.instructions[pc][1] == 'R':
+                    self.Registers[self.instructions[pc][2]] = self.Registers[self.instructions[pc][3]] * self.Registers[self.instructions[pc][4]]
+                elif self.instructions[pc][1] == 'I':
+                    self.Registers[self.instructions[pc][2]] = self.Registers[self.instructions[pc][3]] * self.instructions[pc][4]
+            elif self.instructions[pc][0] == 'SLL':
+                self.Registers[self.instructions[pc][1]] = self.Registers[self.instructions[pc][2]] * pow(2, self.instructions[pc][3])
+            elif self.instructions[pc][0] == 'LW':
+                self.Registers[self.instructions[pc][1]] = self.Data[int((self.instructions[pc][2] + self.Registers[self.instructions[pc][3]] - self.DataBeginIndex) / 4)]
+            elif self.instructions[pc][0] == 'SW':
+                self.Data[int((self.instructions[pc][2] + self.Registers[self.instructions[pc][3]] - self.DataBeginIndex) / 4)] = self.Registers[self.instructions[pc][1]]
+            elif self.instructions[pc][0] == 'BEQ':
+                if self.Registers[self.instructions[pc][1]] == self.Registers[self.instructions[pc][2]]:
+                    self.writeSimulationOutput(cycle, self.instructionBeginIndex + pc * 4, pc)
+                    pc += int(self.instructions[pc][3] / 4)
+                    pc += 1
+                    continue
+            elif self.instructions[pc][0] == 'BGTZ':
+                if self.Registers[self.instructions[pc][1]] >= 0:
+                    self.writeSimulationOutput(cycle, self.instructionBeginIndex + pc * 4, pc)
+                    pc += int(self.instructions[pc][2] / 4)
+                    pc += 1
+                    continue
+            elif self.instructions[pc][0] == 'BLTZ':
+                if self.Registers[self.instructions[pc][1]] <= 0:
+                    self.writeSimulationOutput(cycle, self.instructionBeginIndex + pc * 4, pc)
+                    pc += int(self.instructions[pc][2] / 4)
+                    pc += 1
+                    continue
+            elif self.instructions[pc][0] == 'J':
+                self.writeSimulationOutput(cycle, self.instructionBeginIndex + pc * 4, pc)
+                pc = int((self.instructions[pc][1] - self.instructionBeginIndex) / 4)
+                continue
+            elif self.instructions[pc][0] == 'BREAK':
+                self.writeSimulationOutput(cycle, self.instructionBeginIndex + pc * 4, pc)
+                break
+            self.writeSimulationOutput(cycle, self.instructionBeginIndex + pc * 4, pc)
+            pc += 1
+
 
 if __name__ == '__main__':
     mips = MIPSsimulator()
     mips.inital()
     mips.disassemble()
+    mips.simulation()
     print(mips.instructions)
     print(mips.instructions_print)
     print(mips.Data)
     print(mips.DataBeginIndex)
-    mips.writeSimulationOutput(1, 64, 0)
+    # mips.writeSimulationOutput(1, 64, 0)
     # print(mips.complement2source("1111111111111111111111111111101"))
