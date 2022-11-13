@@ -1,11 +1,12 @@
 import os
+import argparse
 
 BinaryCodePath = "./sample.txt"
 
 
 class MIPSsimulator:
 
-    def __init__(self, BinaryCode=BinaryCodePath):
+    def __init__(self, BinaryCode = BinaryCodePath):
         self.R_function5 = {}
         self.R_function6 = {}
         self.I_opcode = {}
@@ -303,13 +304,17 @@ class MIPSsimulator:
 
 
 if __name__ == '__main__':
-    mips = MIPSsimulator()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("BinaryCodePath", help="the path of sample", type=str)
+    args = parser.parse_args()
+    mips = MIPSsimulator(args.BinaryCodePath)
     mips.inital()
     mips.disassemble()
     mips.simulation()
-    print(mips.instructions)
-    print(mips.instructions_print)
-    print(mips.Data)
-    print(mips.DataBeginIndex)
+
+    # print(mips.instructions)
+    # print(mips.instructions_print)
+    # print(mips.Data)
+    # print(mips.DataBeginIndex)
     # mips.writeSimulationOutput(1, 64, 0)
     # print(mips.complement2source("1111111111111111111111111111101"))
