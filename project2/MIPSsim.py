@@ -250,15 +250,18 @@ class MIPSsimulator:
         self.outputSimulation.write("-" * 20)
         self.outputSimulation.write("\nCycle:%d\n\n" % (cycle))
         self.outputSimulation.write("IF Unit:\n")
-        self.outputSimulation.write("\tWaiting Instruction:")
+        self.outputSimulation.write("\tWaiting Instruction: ")
         if self.Waiting_Instruction is not None:
-            self.outputSimulation.write(" " + self.instructions_print[self.Waiting_Instruction[0]][0] + "\t" +
+            self.outputSimulation.write(self.instructions_print[self.Waiting_Instruction[0]][0] + "\t" +
                                         self.instructions_print[self.Waiting_Instruction[0]][1])
         self.outputSimulation.write("\n")
-        self.outputSimulation.write("\tExecuted Instruction:")
+        self.outputSimulation.write("\tExecuted Instruction: ")
         if self.Executed_Instruction is not None:
-            self.outputSimulation.write(" " + self.instructions_print[self.Executed_Instruction[0]][0] + "\t" +
-                                        self.instructions_print[self.Executed_Instruction[0]][1])
+            if self.instructions[self.Executed_Instruction[0]][0] == "BREAK":
+                self.outputSimulation.write("BREAK")
+            else:
+                self.outputSimulation.write(self.instructions_print[self.Executed_Instruction[0]][0] + "\t" +
+                                            self.instructions_print[self.Executed_Instruction[0]][1])
         self.outputSimulation.write("\n")
         self.outputSimulation.write("Pre-Issue Buffer:\n")
         self.outputSimulation.write("\tEntry 0:")
@@ -427,11 +430,15 @@ class MIPSsimulator:
         # 处理跳转指令，改变PC值
         if self.Executed_Instruction is not None and self.Executed_Instruction[1] < cycle:
             if self.instructions[self.Executed_Instruction[0]][0] == "BLTZ":
-                if self.Registers[self.instructions[self.Executed_Instruction[0]][1]] <= 0:
+                if self.Registers[self.instructions[self.Executed_Instruction[0]][1]] < 0:
                     self.pc += int(self.instructions[self.Executed_Instruction[0]][2] / 4)
             elif self.instructions[self.Executed_Instruction[0]][0] == "BGTZ":
-                if self.Registers[self.instructions[self.Executed_Instruction[0]][1]] >= 0:
+                if self.Registers[self.instructions[self.Executed_Instruction[0]][1]] > 0:
                     self.pc += int(self.instructions[self.Executed_Instruction[0]][2] / 4)
+            elif self.instructions[self.Executed_Instruction[0]][0] == "J":
+                self.pc = int((self.instructions[self.Executed_Instruction[0]][1] - self.instructionBeginIndex) / 4)
+            elif self.instructions[self.Executed_Instruction[0]][0] == "BREAK":
+                exit()
             self.Executed_Instruction = None
 
     def Fetch2Pre_Issue_Buffer(self, cycle):
@@ -439,8 +446,15 @@ class MIPSsimulator:
         while (fetchNum < 2 and len(self.Pre_Issue_Buffer) < 4
                and self.Waiting_Instruction is None
                and self.Executed_Instruction is None):
-            if self.instructions[self.pc][0] in ("BLTZ", "BGTZ", "J", "BREAK", ):
+            if self.instructions[self.pc][0] in ("BLTZ", "BGTZ", ):
                 self.Waiting_Instruction = [self.pc, cycle]
+                # 遇到跳转指令时后面所有的语句都要抛弃
+                self.pc = self.pc + 1
+                break
+            elif self.instructions[self.pc][0] in ("J", "BREAK", ):
+                self.Executed_Instruction = [self.pc, cycle]
+                self.pc = self.pc + 1
+                break
             else:
                 self.Pre_Issue_Buffer.append([self.pc, cycle])
             # updata Tomsulo Register statue table
@@ -570,6 +584,15 @@ class MIPSsimulator:
                     self.Registers[self.instructions[self.Post_ALU_Buffer[0]][2]] = \
                         self.Registers[self.instructions[self.Post_ALU_Buffer[0]][3]] + \
                         self.instructions[self.Post_ALU_Buffer[0]][4]
+            elif self.instructions[self.Post_ALU_Buffer[0]][0] == 'SUB':
+                if self.instructions[self.Post_ALU_Buffer[0]][1] == 'R':
+                    self.Registers[self.instructions[self.Post_ALU_Buffer[0]][2]] = \
+                        self.Registers[self.instructions[self.Post_ALU_Buffer[0]][3]] - self.Registers[
+                            self.instructions[self.Post_ALU_Buffer[0]][4]]
+                elif self.instructions[self.Post_ALU_Buffer[0]][1] == 'I':
+                    self.Registers[self.instructions[self.Post_ALU_Buffer[0]][2]] = \
+                        self.Registers[self.instructions[self.Post_ALU_Buffer[0]][3]] - \
+                        self.instructions[self.Post_ALU_Buffer[0]][4]
             # send to writeback
             self.Post_ALU_Buffer[1] = cycle
             self.WaitWriteBack.append(self.Post_ALU_Buffer)
@@ -615,6 +638,7 @@ class MIPSsimulator:
         while True:
             cycle = cycle + 1
 
+
             # handle branch instruction
             self.HandleBranchInstruction(cycle=cycle)
 
@@ -632,11 +656,11 @@ class MIPSsimulator:
 
             # output
             self.writeSimulationOutput(cycle=cycle)
-
-            if cycle == 28:
-                print()
-            if cycle == 32:
-                break
+            #
+            # if cycle == 230:
+            #     print()
+            # if cycle == 231:
+            #     break
 
 
 if __name__ == '__main__':
