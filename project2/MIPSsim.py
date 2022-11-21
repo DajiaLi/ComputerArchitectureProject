@@ -423,12 +423,13 @@ class MIPSsimulator:
                 self.Executed_Instruction = self.Waiting_Instruction
                 self.Executed_Instruction[1] = cycle
                 self.Waiting_Instruction = None
-            # 处理跳转指令，改变PC值
-            if self.Executed_Instruction is not None and self.Executed_Instruction[1] < cycle:
-                if self.instructions[self.Executed_Instruction[0]][0] == "BLTZ":
-                    if self.Registers[self.instructions[self.Executed_Instruction[0]][1]] <= 0:
-                        self.pc += int(self.instructions[self.pc][2] / 4)
-                self.Executed_Instruction = None
+
+        # 处理跳转指令，改变PC值
+        if self.Executed_Instruction is not None and self.Executed_Instruction[1] < cycle:
+            if self.instructions[self.Executed_Instruction[0]][0] == "BLTZ":
+                if self.Registers[self.instructions[self.Executed_Instruction[0]][1]] <= 0:
+                    self.pc += int(self.instructions[self.pc][2] / 4)
+            self.Executed_Instruction = None
 
     def Fetch2Pre_Issue_Buffer(self, cycle):
         fetchNum = 0  # 一次最多取两条, 最多容纳4条
@@ -629,9 +630,9 @@ class MIPSsimulator:
             # output
             self.writeSimulationOutput(cycle=cycle)
 
-            if cycle == 18:
-                print()
             if cycle == 20:
+                print()
+            if cycle == 24:
                 break
 
 
