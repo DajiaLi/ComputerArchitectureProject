@@ -632,7 +632,7 @@ class MIPSsimulator:
 
             if cycle == 20:
                 print()
-            if cycle == 24:
+            if cycle == 28:
                 break
 
 
