@@ -359,7 +359,7 @@ class MIPSsimulator:
         根据Tomsaulo算法判断index为pc的instruction能否issue
         :return: Ture or False
         """
-        if self.instructions[pc][0] in ('ADD', ):
+        if self.instructions[pc][0] in ('ADD', 'SUB'):
             if self.instructions[pc][1] == 'R':
                 # 前1个if用于用于排除[ADD	R1, R1, R5]，如果没有其他干扰，R1的status不为None，但实际上没有hazard
                 if len(self.Register_status[self.instructions[pc][4]]) == 0 \
@@ -428,7 +428,10 @@ class MIPSsimulator:
         if self.Executed_Instruction is not None and self.Executed_Instruction[1] < cycle:
             if self.instructions[self.Executed_Instruction[0]][0] == "BLTZ":
                 if self.Registers[self.instructions[self.Executed_Instruction[0]][1]] <= 0:
-                    self.pc += int(self.instructions[self.pc][2] / 4)
+                    self.pc += int(self.instructions[self.Executed_Instruction[0]][2] / 4)
+            elif self.instructions[self.Executed_Instruction[0]][0] == "BGTZ":
+                if self.Registers[self.instructions[self.Executed_Instruction[0]][1]] >= 0:
+                    self.pc += int(self.instructions[self.Executed_Instruction[0]][2] / 4)
             self.Executed_Instruction = None
 
     def Fetch2Pre_Issue_Buffer(self, cycle):
@@ -589,7 +592,7 @@ class MIPSsimulator:
             if self.instructions[self.Post_ALUB_Buffer[0]][0] == 'SLL':
                 self.Registers[self.instructions[self.Post_ALUB_Buffer[0]][1]] = self.Registers[self.instructions[self.Post_ALUB_Buffer[0]][2]] * pow(2,self.instructions[self.Post_ALUB_Buffer[0]][3])
             elif self.instructions[self.Post_ALUB_Buffer[0]][0] == 'SRL':
-                self.Registers[self.instructions[self.Post_ALUB_Buffer[0]][1]] = self.Registers[self.instructions[self.Post_ALUB_Buffer[0]][2]] / pow(2,self.instructions[self.Post_ALUB_Buffer[0]][3])
+                self.Registers[self.instructions[self.Post_ALUB_Buffer[0]][1]] = int(self.Registers[self.instructions[self.Post_ALUB_Buffer[0]][2]] / pow(2,self.instructions[self.Post_ALUB_Buffer[0]][3]))
             # send to writeback
             self.Post_ALUB_Buffer[1] = cycle
             self.WaitWriteBack.append(self.Post_ALUB_Buffer)
@@ -630,9 +633,9 @@ class MIPSsimulator:
             # output
             self.writeSimulationOutput(cycle=cycle)
 
-            if cycle == 20:
-                print()
             if cycle == 28:
+                print()
+            if cycle == 32:
                 break
 
 
